@@ -15,7 +15,7 @@ import com.pengrad.telegrambot.request.SendVoice;
 import org.joda.time.DateTime;
 
 import static core.IgnoredWords.listOfIgnoredWords;
-import static core.Keypads.keypadButtonProcessing;
+import static core.Keypads.keypadButtonsProcessing;
 
 public class DailyBot {
     protected static TelegramBot bot;
@@ -27,11 +27,14 @@ public class DailyBot {
     protected final static String INFO = "/info";
     protected final static String RESET_TIME = "/reset_time";
     protected final static String STOP_SEND = "/stop_send";
+    protected final static String SET_LANG = "/set_lang";
     protected final static String LEZGI_RUS = "/lezgi_rus";
     protected final static String RUS_LEZGI = "/rus_lezgi";
     protected final static String DICT_OFF = "/dict_off";
     protected final static String RUS_INTERFACE = "/rus_interface";
     protected final static String LEZGI_INTERFACE = "/lezgi_interface";
+    protected final static String SELECT_LEZGI = "/select_lezgi";
+    protected final static String SELECT_RUS = "/select_rus";
     protected static Map<Long, String> dictionaryLanguage = new HashMap<>();
     protected static Map<String, String> clickButtonsLezgi = new HashMap<>();
     protected static Map<String, String> clickButtonsRus = new HashMap<>();
@@ -43,8 +46,8 @@ public class DailyBot {
 
     protected static Map<Long, Time> timeToSendMessages = new HashMap<>();
 
-    private ParsedDictionary rusLezgiDictionary = new ParsedDictionary();
-    private ParsedDictionary lezgiRusDictionary = new ParsedDictionary();
+    protected static ParsedDictionary rusLezgiDictionary = new ParsedDictionary();
+    protected static ParsedDictionary lezgiRusDictionary = new ParsedDictionary();
 
     public DailyBot(String apiKey) throws IOException {
         bot = new TelegramBot(apiKey);
@@ -63,165 +66,64 @@ public class DailyBot {
                         Message message1 = callbackQuery.message();
                         long chatId = message1.chat().id();
                         String data = callbackQuery.data();
-                        if ("/translation".equals(data)) {
-                            // Send a response message
-                            bot.execute(new SendMessage(chatId, "Я Рамиза знаю с детства (или: «знаю с маленьких лет»), мы в школе учились в одном классе."));
-                            bot.execute(new AnswerCallbackQuery(callbackQuery.id()));
-                            //chatLang.put(chatId, "/rus_lezgi");
-                        } else if (clickButtonsLezgi.containsKey(data) && LEZGI_RUS.equals(clickButtonsLezgi.get(data))) {
-                            sendAnswerFromButtons(bot, lezgiRusDictionary, callbackQuery, chatId, data);
-                        } else if (clickButtonsRus.containsKey(data) && RUS_LEZGI.equals(clickButtonsRus.get(data))) {
-                            sendAnswerFromButtons(bot, rusLezgiDictionary, callbackQuery, chatId, data);
-                        }
+                        InlineButtons.inlineButtonsProcessing(chatId, data, callbackQuery);
                     }
                     var message = update.message(); // Получаем сообщение
-
                     if (message == null) {
                         continue;
                     }
                     long chatId = message.chat().id();
-
                     //    DateTime now1 = DateTime.now();
                     //    System.out.println(now1.getHourOfDay() + ":" + now1.getMinuteOfHour());
-
                     if (update.message() != null && update.message().text() != null) {
 
-                        keypadButtonProcessing(chatId, update.message().text());
+                        /*  Обработка Keypad */
+                        Keypads.keypadButtonsProcessing(chatId, update.message().text());
 
                         String userMessage = update.message().text().toLowerCase();
                         if (dictionaryLanguage.get(chatId) != null) {
                             userMessage = userMessage.replaceAll("1", "i");
                         }
-
+                        /* Старт, выбор языка интерфейса */
                         if (START.equals(userMessage)) {
-
-                            bot.execute(new SendMessage(chatId, "Ас-саляму алейкум\uD83D\uDC4B\uD83C\uDFFC\n\n"
-                                    + "Вун атуй, рагъ атуй!\nДобро пожаловать!"));
-                            bot.execute(new SendMessage(chatId, "Каждый день, в назначенное Вами время⏳, бот будет "
-                                    + "присылать текстовые фразы[?] на лезгинском языке + озвучка\uD83C\uDFA4. Ваша "
-                                    + "задача - прочитать, прослушать, перевести. После нажимаете кнопку «Получить "
-                                    + "перевод» и сравниваете свой перевод\uD83D\uDD0D.\n\n"
-                                    + "Вот вам первый пример, для понимания:\n\n"
-                                    + "«Рамиз заз бицIи чIавалай чизвайди я, чун мектебда са классда авайди тир»"));
-                            /* Sending voice */
-                            File file = new File("src/main/resources/audio_1.ogg");
-                            SendVoice request = new SendVoice(chatId, file);
-                            bot.execute(request);
-                            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
+                            InlineKeyboardMarkup languageSelectionButtons = new InlineKeyboardMarkup(
                                     new InlineKeyboardButton[][]{
-                                            {new InlineKeyboardButton("Получить перевод").callbackData("/translation")}
+                                            {new InlineKeyboardButton("Лезги чIал").callbackData(LEZGI_INTERFACE),
+                                                    new InlineKeyboardButton("Русский язык").callbackData(RUS_INTERFACE)}
                                     });
-                            bot.execute(new SendMessage(chatId, "После того, как перевели, нажимаете на кнопку:\uD83D\uDC47\uD83C\uDFFC")
-                                    .replyMarkup(inlineKeyboard));
-                            bot.execute(new SendMessage(chatId, "Нужен словарь?\uD83D\uDCD7Он здесь есть. Нажмите "
-                                    + "на кнопку меню слева и выберите нужный словарь\uD83D\uDCD6.\n\n"
-                                    + "Проблемы с пониманием как работает бот? Я приложил вам инструкцию."
-                                    + "Нажмите на кнопку меню слева и выберите пункт «Инструкция»\n\n"
-                                    + "Давайте начнём. Для начала нужно понять какой у вас часовой пояс. Введите "
-                                    + "который у вас сейчас час. МИНУТЫ НЕ НУЖНЫ, введите только час (Например, если "
-                                    + "ваше время сейчас - 14:33, отправляете 14, 09:19 - 09 и т.д.)"));
-
-                            ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup(
-                                    new KeyboardButton[]{
-                                            new KeyboardButton("Инструкция\uD83D\uDCDD"),
-                                            new KeyboardButton("Лезгинско-русский словарь\uD83D\uDCD7")
-                                    },
-                                    new KeyboardButton[]{
-                                            new KeyboardButton("Задать новое время отправки фраз\uD83D\uDD57"),
-                                            new KeyboardButton("Русско-лезгинский словарь\uD83D\uDCD5")
-                                    },
-                                    new KeyboardButton[]{
-                                            new KeyboardButton("Остановить отправку фраз\uD83D\uDE45\uD83C\uDFFB\u200D♂️"),
-                                            new KeyboardButton("Выключить словари\uD83D\uDCA4")
-                                    },
-                                    new KeyboardButton[]{
-                                            new KeyboardButton("Написать отзыв✍\uD83C\uDFFC"),
-                                            new KeyboardButton("Изменить язык\uD83C\uDF10")
-                                    }
-                            );
-                            keyboardMarkup.resizeKeyboard(true);
-                            SendMessage message1 = new SendMessage(chatId, "Выберите действие:");
-                            message1.replyMarkup(keyboardMarkup);
-                            bot.execute(message1);
+                            bot.execute(new SendMessage(chatId, "ЧIал хкягъа \uD83C\uDF10 Выберите язык")
+                                    .replyMarkup(languageSelectionButtons));
+                            bot.execute(new SendMessage(chatId, "\uD83D\uDCA1Примечание\n\n"
+                                    + "Весь интерфейс будет на лезгинском языке, если выбрать «Лезги чIал». Это больше "
+                                    + "подойдет для тех, кто лезгинский уже знает и хочет подтянуть. Будет хорошая "
+                                    + "возможность погрузиться в язык полностью.\nНо сложно будет тем, кто лезгинский "
+                                    + "совсем не знает. Конечно, всё на ваше усмотрение, вам виднее. Желаю успехов!"));
                         }
-                        /* Словари */
-                        else if (LEZGI_RUS.equals(userMessage)) {
-                            dictionaryLanguage.put(chatId, LEZGI_RUS);
-                            bot.execute(new SendMessage(chatId, "Выбран Лезгинско-Русский словарь.\n\n" +
-                                    "Введите слово на лезгинском языке.\n" +
-                                    "Символ «I» (палочка: кI, тI, пI...) вводите через латинкую букву «i»."));
-
-                        } else if (RUS_LEZGI.equals(userMessage)) {
-                            dictionaryLanguage.put(chatId, RUS_LEZGI);
-                            bot.execute(new SendMessage(chatId, "Выбран Русско-Лезгинский словарь.\n " +
-                                    "\nВведите слово на русском языке."));
-                        }
-                        /*   Выключить словари */
-                        else if (DICT_OFF.equals(userMessage)) {
-                            bot.execute(new SendMessage(chatId, "Словари выключены"));
-                            dictionaryLanguage.remove(chatId);
-                            clickButtonsLezgi.remove(chatId);
-                            clickButtonsRus.remove(chatId);
-                        }
-
                         if (RUS_LEZGI.equals(dictionaryLanguage.get(chatId))
                                 && (rusLezgiDictionary.map.containsKey(userMessage))) {
                             sendAnswerFromDictionary(bot, rusLezgiDictionary, chatId, userMessage);
                         } else if (LEZGI_RUS.equals(dictionaryLanguage.get(chatId))
                                 && (lezgiRusDictionary.map.containsKey(userMessage))) {
                             sendAnswerFromDictionary(bot, lezgiRusDictionary, chatId, userMessage);
-                        } else if (LEZGI_RUS.equals(dictionaryLanguage.get(chatId)))
-//                                && !(START.equals(userMessage))
-//                                && !(LEZGI_RUS.equals(userMessage))
-//                                && !(RUS_LEZGI.equals(userMessage))
-//                                && !(HELP.equals(userMessage))                 МОЖНО ВСЕ УДАЛИТЬ
-//                                && !(INFO.equals(userMessage))
-//                                && !(RESET_TIME.equals(userMessage))
-//                                && !(STOP_SEND.equals(userMessage))
-//                                && !(DICT_OFF.equals(userMessage))
-//                                && !("лезгинско-русский словарь\uD83D\uDCD7".equals(userMessage)))
-                        {
+                        } else if (LEZGI_RUS.equals(dictionaryLanguage.get(chatId))) {
                             sendAnswerToUserWhenIncorrectInput(bot, lezgiRusDictionary, clickButtonsLezgi, chatId, userMessage, LEZGI_RUS);
-                        } else if (RUS_LEZGI.equals(dictionaryLanguage.get(chatId)))
-//                                && !(START.equals(userMessage))
-//                                && !(LEZGI_RUS.equals(userMessage))
-//                                && !(RUS_LEZGI.equals(userMessage))
-//                                && !(HELP.equals(userMessage))             МОЖНО ВСЕ УДАЛИТЬ
-//                                && !(INFO.equals(userMessage))
-//                                && !(RESET_TIME.equals(userMessage))
-//                                && !(STOP_SEND.equals(userMessage))
-//                                && !(DICT_OFF.equals(userMessage))
-//                                && !("лезгинско-русский словарь\uD83D\uDCD7".equals(userMessage)))
-                        {
+                        } else if (RUS_LEZGI.equals(dictionaryLanguage.get(chatId))) {
                             sendAnswerToUserWhenIncorrectInput(bot, rusLezgiDictionary, clickButtonsRus, chatId, userMessage, RUS_LEZGI);
                         }
-
-                        /* Сброс времени отправки */
-
-                        else if (RESET_TIME.equals(userMessage)) {
-                            timeZoneFixation.remove(chatId);
-                            timeToSendMessages.remove(chatId);
-                            dictionaryLanguage.remove(chatId);
-                            bot.execute(new SendMessage(chatId, "Вы сбросили время, чтобы задать другое время отправки" +
-                                    "фраз. Введите ваше время сейчас:"));
-                        }
-
-                        /* Остановка отправки фраз */
-                        else if (STOP_SEND.equals(userMessage)) {
-                            timeZoneFixation.remove(chatId);
-                            timeToSendMessages.remove(chatId);
-                            bot.execute(new SendMessage(chatId, "Бот остановлен"));
-                        }
-
                         /* Фиксация часового пояса  */
                         else if (timeZoneFixation.get(chatId) == null
                                 && (userMessage.matches("^0?[0-9]|1[0-9]|2[0-3]$"))) {
                             timeZoneFixation.put(chatId, Integer.parseInt(userMessage));
-                            bot.execute(new SendMessage(chatId, "Часовой пояс зафиксирован.\n\n"
-                                    + "А теперь введите время, во сколько вы хотите получать фразы (в формате часы:минуты, "
-                                    + "например: 21:10, 13:47, 09:05 и т.д.)"));
+                            if (interfaceLanguage.get(chatId).equals(RUS_INTERFACE)) {
+                                bot.execute(new SendMessage(chatId, "Часовой пояс зафиксирован.\n\n"
+                                        + "А теперь введите время, во сколько вы хотите получать задания (в формате часы:минуты, "
+                                        + "например: 21:10):"));
+                            }else if (interfaceLanguage.get(chatId).equals(LEZGI_INTERFACE)) {
+                                bot.execute(new SendMessage(chatId, "Куьн часовой пояс чир хьана. Кхьихьа "
+                                        + "куьн исятда шумуд сят я. МИНУТАР КХЬИМИР, анжах сят кхьихь (месела, эгер "
+                                        + "исятда куьн чIав - 14:33 ятIа, ракъура 14, эгер 09:19 - ракъура 09 ...)"));
+                            }
                         }
-
                         /* Фиксация времени */
                         else if (userMessage.matches("^\\d{1,2}:\\d{2}$")
                                 && timeToSendMessages.get(chatId) == null) {
@@ -240,8 +142,13 @@ public class DailyBot {
                             if (scheduledTime.isBeforeNow()) {
                                 scheduledTime = scheduledTime.plusDays(1);
                             }
-                            bot.execute(new SendMessage(chatId, "Отлично. Каждый день, в " + userMessage
-                                    + " бот будет присылать Вам фразы."));
+                            if (interfaceLanguage.get(chatId).equals(RUS_INTERFACE)) {
+                                bot.execute(new SendMessage(chatId, "Отлично. Каждый день, в " + userMessage
+                                        + " бот будет присылать вам задания."));
+                            } else if (interfaceLanguage.get(chatId).equals(LEZGI_INTERFACE)) {
+                                bot.execute(new SendMessage(chatId, "Хъсан я. Гьар юкъуз, сятдин " + userMessage
+                                        + " ботди квез тапшуругъар ракъурда. Агалкьунар хьуй!"));
+                            }
 
                             timer.scheduleAtFixedRate(new TimerTask() {
                                 @Override
@@ -282,7 +189,7 @@ public class DailyBot {
         bot.execute(sendMessage);
     }
 
-    private static void sendAnswerFromButtons(TelegramBot bot, ParsedDictionary dictionary,
+    public static void sendAnswerFromButtons(TelegramBot bot, ParsedDictionary dictionary,
                                               CallbackQuery callbackQuery, long chatId, String data) {
         List<String> translations = dictionary.map.get(data.toLowerCase());
         String msgStr = convertToHtml(translations);
@@ -293,7 +200,7 @@ public class DailyBot {
         bot.execute(new AnswerCallbackQuery(callbackQuery.id()));
     }
 
-    private static void sendAnswerToUserWhenIncorrectInput(TelegramBot bot, ParsedDictionary dictionary, Map<String, String> clickButtons,
+    public static void sendAnswerToUserWhenIncorrectInput(TelegramBot bot, ParsedDictionary dictionary, Map<String, String> clickButtons,
                                                            long chatId, String userMessage, String language) {
         if (listOfIgnoredWords.contains(userMessage)) {
             return;
@@ -324,10 +231,19 @@ public class DailyBot {
         }
         InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(inlineKeyboardButton);
         if (clickButtons.size() > 0 && temp.size() > 0) {
-            bot.execute(new SendMessage(chatId, "Ничего не нашлось\uD83E\uDD14, возможно вы имели ввиду:\n")
-                    .replyMarkup(inlineKeyboard));
+            if (interfaceLanguage.get(chatId).equals(RUS_INTERFACE)) {
+                bot.execute(new SendMessage(chatId, "В словаре ничего не нашлось\uD83E\uDD14, возможно вы имели ввиду:\n")
+                        .replyMarkup(inlineKeyboard));
+            } else if (interfaceLanguage.get(chatId).equals(LEZGI_INTERFACE)) {
+                bot.execute(new SendMessage(chatId, "Гафарганда жагъай гаф авач\uD83E\uDD14, килиг и гафариз\n")
+                        .replyMarkup(inlineKeyboard));
+            }
         } else {
-            bot.execute(new SendMessage(chatId, "Ничего не нашлось\uD83E\uDD72. Повторите запрос"));
+            if (interfaceLanguage.get(chatId).equals(RUS_INTERFACE)) {
+                bot.execute(new SendMessage(chatId, "В словаре ничего не нашлось\uD83E\uDD72. Повторите запрос"));
+            } else if (interfaceLanguage.get(chatId).equals(LEZGI_INTERFACE)) {
+                bot.execute(new SendMessage(chatId, "Гафарганда жагъай гаф авач\uD83E\uDD72. МасакI кхьихь"));
+            }
         }
     }
 

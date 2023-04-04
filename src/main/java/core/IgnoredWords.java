@@ -7,14 +7,22 @@ import static core.DailyBot.*;
 public class IgnoredWords {
 
     public static List<String> listOfIgnoredWords = List.of(
-            START, HELP, INFO, RESET_TIME, STOP_SEND, LEZGI_RUS, RUS_LEZGI, DICT_OFF,
-            "инструкция\uD83D\uDCDD",
-            "лезгинско-русский словарь\uD83D\uDCD7",
-            "задать новое время отправки фраз\uD83D\uDD57",
-            "русско-лезгинский словарь\uD83D\uDCD5",
-            "остановить отправку фраз\uD83D\uDE45\uD83C\uDFFB\u200D♂️",
-            "выключить словари\uD83D\uDCA4",
-            "написать отзыв✍\uD83C\uDFFC",
-            "изменить язык\uD83C\uDF10"
+            START, HELP, INFO, RESET_TIME, STOP_SEND, LEZGI_RUS, RUS_LEZGI, DICT_OFF, SET_LANG,
+            "\uD83D\uDD20алфавит",
+            "\uD83C\uDF93экзамен",
+            "\uD83D\uDCDAвыбрать словарь",
+            "⏳настройка таймера",
+            "\uD83D\uDCA4выключить словари",
+            "\uD83C\uDF10сменить язык",
+            "\uD83D\uDCDDинструкция бота",
+            "✍\uD83C\uDFFCнаписать отзыв",
+            "\uD83D\uDD20гьарфар",
+            "\uD83C\uDF93экзаменар",
+            "\uD83D\uDCDAгафарган хкягъун",
+            "⏳чIав туькIуьрун",
+            "\uD83D\uDCA4гафарган хкудун",
+            "\uD83C\uDF10чIал дегишрун",
+            "\uD83D\uDCDDботдин къайдаяр",
+            "✍\uD83C\uDFFCкъимет гун"
     );
 }
