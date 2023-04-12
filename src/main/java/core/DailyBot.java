@@ -12,6 +12,7 @@ import com.pengrad.telegrambot.model.request.*;
 import com.pengrad.telegrambot.request.AnswerCallbackQuery;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.request.SendVoice;
+import io.github.cdimascio.dotenv.Dotenv;
 import org.joda.time.DateTime;
 
 import static core.IgnoredWords.listOfIgnoredWords;
@@ -176,7 +177,14 @@ public class DailyBot {
     }
 
     public static void main(String[] args) throws IOException {
-        DailyBot bot = new DailyBot("6111537155:AAH-bogcqA4bLX4bRl4q7UUohsnlSRE5YHw");
+        Dotenv dotenv = null;
+        dotenv = Dotenv.configure().load();
+        var token = dotenv.get("TELEGRAM_API_TOKEN");
+        if (token == null) {
+            System.err.println("Telegram token not found");
+            return;
+        }
+        DailyBot bot = new DailyBot(token);
         bot.start();
     }
 
